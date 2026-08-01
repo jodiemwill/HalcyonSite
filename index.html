@@ -366,24 +366,30 @@
         we'll let you know as soon as retreat dates and applications open —
         nothing else, no noise.</p>
 
-      <form class="signup" id="signupForm" name="signup" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <form class="signup" id="signupForm" name="signup" method="POST" action="/?registered=true" data-netlify="true" netlify-honeypot="bot-field">
         <input type="hidden" name="form-name" value="signup">
         <p style="position:absolute;left:-9999px;" aria-hidden="true">
           <label>Don't fill this out if you're human: <input name="bot-field"></label>
         </p>
         <label for="email" class="sr-only" style="position:absolute;left:-9999px;">Email address</label>
-        <input type="email" id="email" name="email" placeholder="you@email.com">
+        <input type="email" id="email" name="email" placeholder="you@email.com" required>
         <button type="submit">Register interest</button>
+        <div class="consent">
+          <input type="checkbox" id="consent" name="consent" required>
+          <label for="consent">I agree to Halcyon holding my email address to send me launch updates,
+            in line with the <button type="button" class="link-btn" onclick="openPrivacy(event)"
+            style="background:none;border:none;padding:0;color:var(--sunset);text-decoration:underline;cursor:pointer;font-size:12.5px;font-family:inherit;">Privacy Notice</button>.</label>
+        </div>
       </form>
-      <div class="consent">
-        <input type="checkbox" id="consent">
-        <label for="consent">I agree to Halcyon holding my email address to send me launch updates,
-          in line with the <button type="button" class="link-btn" onclick="openPrivacy(event)"
-          style="background:none;border:none;padding:0;color:var(--sunset);text-decoration:underline;cursor:pointer;font-size:12.5px;font-family:inherit;">Privacy Notice</button>.</label>
-      </div>
-      <p id="formStatus" role="status"></p>
       <p class="form-note">Prefer email? Write to us directly at
         <a href="mailto:hello@wearehalcyon.uk" style="color:var(--sunset);">hello@wearehalcyon.uk</a></p>
+    </div>
+    <div class="modal-overlay" id="successOverlay" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <div class="modal">
+        <button class="close" aria-label="Close" onclick="closeSuccess()">&times;</button>
+        <h2 id="successTitle">You're on the list</h2>
+        <p>Thanks for registering your interest in Halcyon. We'll be in touch as soon as retreat dates and applications open — nothing else, no noise.</p>
+      </div>
     </div>
   </section>
 
@@ -406,7 +412,7 @@
   <div class="modal">
     <button class="close" aria-label="Close privacy notice" onclick="closePrivacy()">&times;</button>
     <h2 id="privacyTitle">Privacy Notice</h2>
-    <p class="updated">Last updated: [add date] &nbsp;·&nbsp; Draft for review — replace bracketed details before going live.</p>
+    <p class="updated">Last updated: 1 August 2026 &nbsp;·&nbsp; Draft for review — replace bracketed details before going live.</p>
 
     <h3>Who we are</h3>
     <p>This website is operated by Halcyon [insert full company/trading name and address once registered],
@@ -426,8 +432,12 @@
       form. You can withdraw this consent at any time (see "Your rights" below).</p>
 
     <h3>Who processes it</h3>
-    <p>Your email is handled by [insert form/email service provider, e.g. Formspree, Mailchimp, Google
-      Workspace] acting as our data processor, solely to store your details and send you updates.</p>
+    <p>Your email is handled by Netlify, Inc., our website hosting provider, using their built-in Forms
+      feature, acting as our data processor solely to store your details and notify us of new sign-ups.
+      Netlify is based in the United States, so your data may be transferred there; Netlify participates
+      in recognised data protection frameworks to safeguard this transfer. [Confirm Netlify's current
+      safeguard mechanism, e.g. UK/EU-US Data Privacy Framework or Standard Contractual Clauses, before
+      launch.]</p>
 
     <h3>How long we keep it</h3>
     <p>We'll keep your email until Halcyon launches and for a short period afterwards, or until you ask
@@ -470,59 +480,27 @@
     if(e.key === 'Escape') closePrivacy();
   });
 
-  // Signup form — submits to Netlify Forms (auto-detected via the
-  // data-netlify attribute on the form and the hidden form-name field).
-  function encodeForNetlify(data) {
-    return Object.keys(data)
-      .map(function(key){ return encodeURIComponent(key) + '=' + encodeURIComponent(data[key]); })
-      .join('&');
+  // Signup form — submits natively to Netlify Forms (no JS interception,
+  // no fetch). This is the most reliable method: Netlify intercepts the
+  // real POST request server-side, then redirects the browser back to
+  // the action URL (/?registered=true). On load, we check for that flag
+  // and show a success pop-up, then clean the URL.
+  function openSuccess(){
+    document.getElementById('successOverlay').classList.add('open');
   }
-  var form = document.getElementById('signupForm');
-  var status = document.getElementById('formStatus');
-  var emailInput = document.getElementById('email');
-  var consentInput = document.getElementById('consent');
-
-  form.addEventListener('submit', function(e){
-    e.preventDefault();
-    e.stopPropagation();
-
-    var email = emailInput.value.trim();
-    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(!email || !emailPattern.test(email)){
-      status.textContent = 'Please enter a valid email address.';
-      status.className = 'err';
-      return;
+  function closeSuccess(){
+    document.getElementById('successOverlay').classList.remove('open');
+    if(window.history && window.history.replaceState){
+      window.history.replaceState(null, '', window.location.pathname);
     }
-    if(!consentInput.checked){
-      status.textContent = 'Please confirm you\'re happy for us to email you.';
-      status.className = 'err';
-      return;
-    }
-
-    status.textContent = 'Sending…';
-    status.className = '';
-
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encodeForNetlify({
-        'form-name': 'signup',
-        'email': email,
-        'bot-field': ''
-      })
-    }).then(function(response){
-      if(!response.ok){
-        throw new Error('Server responded with ' + response.status);
-      }
-      status.textContent = 'Thanks — we\'ll be in touch as soon as Halcyon opens its doors, ' + email;
-      status.className = 'ok';
-      form.reset();
-    }).catch(function(error){
-      console.error('Signup form submission failed:', error);
-      status.textContent = 'Something went wrong — please try again, or email us directly.';
-      status.className = 'err';
-    });
+  }
+  document.getElementById('successOverlay').addEventListener('click', function(e){
+    if(e.target === this) closeSuccess();
   });
+
+  if(window.location.search.indexOf('registered=true') !== -1){
+    openSuccess();
+  }
 </script>
 
 </body>
