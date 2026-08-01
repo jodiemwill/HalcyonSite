@@ -366,7 +366,11 @@
         we'll let you know as soon as retreat dates and applications open —
         nothing else, no noise.</p>
 
-      <form class="signup" id="signupForm">
+      <form class="signup" id="signupForm" name="signup" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="signup">
+        <p style="position:absolute;left:-9999px;" aria-hidden="true">
+          <label>Don't fill this out if you're human: <input name="bot-field"></label>
+        </p>
         <label for="email" class="sr-only" style="position:absolute;left:-9999px;">Email address</label>
         <input type="email" id="email" name="email" placeholder="you@email.com" required>
         <button type="submit">Register interest</button>
@@ -466,8 +470,13 @@
     if(e.key === 'Escape') closePrivacy();
   });
 
-  // Signup form — replace the placeholder endpoint below with a real one
-  // (see the notes provided alongside this file) before launch.
+  // Signup form — submits to Netlify Forms (auto-detected via the
+  // data-netlify attribute on the form and the hidden form-name field).
+  function encodeForNetlify(data) {
+    return Object.keys(data)
+      .map(function(key){ return encodeURIComponent(key) + '=' + encodeURIComponent(data[key]); })
+      .join('&');
+  }
   var form = document.getElementById('signupForm');
   var status = document.getElementById('formStatus');
   form.addEventListener('submit', function(e){
@@ -479,11 +488,21 @@
       status.className = 'err';
       return;
     }
-    // Placeholder: no backend connected yet. Swap this block for a real
-    // fetch() call to your form provider once it's set up.
-    status.textContent = 'Thanks — we\'ll be in touch as soon as Halcyon opens its doors, ' + email;
-    status.className = 'ok';
-    form.reset();
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: encodeForNetlify({
+        'form-name': 'signup',
+        'email': email
+      })
+    }).then(function(){
+      status.textContent = 'Thanks — we\'ll be in touch as soon as Halcyon opens its doors, ' + email;
+      status.className = 'ok';
+      form.reset();
+    }).catch(function(){
+      status.textContent = 'Something went wrong — please try again, or email us directly.';
+      status.className = 'err';
+    });
   });
 </script>
 
