@@ -372,11 +372,11 @@
           <label>Don't fill this out if you're human: <input name="bot-field"></label>
         </p>
         <label for="email" class="sr-only" style="position:absolute;left:-9999px;">Email address</label>
-        <input type="email" id="email" name="email" placeholder="you@email.com" required>
+        <input type="email" id="email" name="email" placeholder="you@email.com">
         <button type="submit">Register interest</button>
       </form>
       <div class="consent">
-        <input type="checkbox" id="consent" required>
+        <input type="checkbox" id="consent">
         <label for="consent">I agree to Halcyon holding my email address to send me launch updates,
           in line with the <button type="button" class="link-btn" onclick="openPrivacy(event)"
           style="background:none;border:none;padding:0;color:var(--sunset);text-decoration:underline;cursor:pointer;font-size:12.5px;font-family:inherit;">Privacy Notice</button>.</label>
@@ -479,27 +479,46 @@
   }
   var form = document.getElementById('signupForm');
   var status = document.getElementById('formStatus');
+  var emailInput = document.getElementById('email');
+  var consentInput = document.getElementById('consent');
+
   form.addEventListener('submit', function(e){
     e.preventDefault();
-    var email = document.getElementById('email').value;
-    var consent = document.getElementById('consent').checked;
-    if(!consent){
+    e.stopPropagation();
+
+    var email = emailInput.value.trim();
+    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!email || !emailPattern.test(email)){
+      status.textContent = 'Please enter a valid email address.';
+      status.className = 'err';
+      return;
+    }
+    if(!consentInput.checked){
       status.textContent = 'Please confirm you\'re happy for us to email you.';
       status.className = 'err';
       return;
     }
+
+    status.textContent = 'Sending…';
+    status.className = '';
+
     fetch('/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: encodeForNetlify({
         'form-name': 'signup',
-        'email': email
+        'email': email,
+        'bot-field': ''
       })
-    }).then(function(){
+    }).then(function(response){
+      if(!response.ok){
+        throw new Error('Server responded with ' + response.status);
+      }
       status.textContent = 'Thanks — we\'ll be in touch as soon as Halcyon opens its doors, ' + email;
       status.className = 'ok';
       form.reset();
-    }).catch(function(){
+    }).catch(function(error){
+      console.error('Signup form submission failed:', error);
       status.textContent = 'Something went wrong — please try again, or email us directly.';
       status.className = 'err';
     });
